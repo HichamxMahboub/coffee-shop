@@ -2,6 +2,7 @@ import forms from "@tailwindcss/forms";
 import typography from "@tailwindcss/typography";
 
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,jsx}"] ,
   theme: {
     extend: {

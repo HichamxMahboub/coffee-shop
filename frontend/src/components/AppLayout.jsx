@@ -1,7 +1,17 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Coffee, LayoutDashboard, ShoppingBag, Package, BarChart3, LogOut } from "lucide-react";
+import {
+  Coffee,
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  BarChart3,
+  LogOut,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme } from "../context/ThemeContext.jsx";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -12,6 +22,7 @@ const navItems = [
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
@@ -65,6 +76,20 @@ export default function AppLayout() {
         </aside>
 
         <main className="flex-1 px-10 py-8">
+          <div className="mb-6 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="button-secondary no-print"
+            >
+              {theme === "dark" ? (
+                <Sun className="mr-2 h-4 w-4" />
+              ) : (
+                <Moon className="mr-2 h-4 w-4" />
+              )}
+              {theme === "dark" ? "Mode clair" : "Mode sombre"}
+            </button>
+          </div>
           <Outlet />
         </main>
       </div>

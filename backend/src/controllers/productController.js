@@ -1,4 +1,12 @@
+import { z } from "zod";
 import { query } from "../db.js";
+
+const productSchema = z.object({
+  name: z.string().min(2),
+  price: z.number().positive(),
+  categoryId: z.number().int().optional().nullable(),
+  imageUrl: z.string().url().optional().nullable().or(z.literal("")),
+});
 
 // Liste des produits avec recherche et catégories
 export async function getProducts(req, res, next) {
@@ -7,10 +15,10 @@ export async function getProducts(req, res, next) {
     const params = [];
 
     let sql = `
-      SELECT p.id, p.name, p.price, p.stock, p.low_stock_threshold,
-             c.id AS category_id, c.name AS category_name
+      SELECT p.id, p.nom AS name, p.prix AS price, p.image_url,
+             c.id AS category_id, c.nom AS category_name
       FROM products p
-      LEFT JOIN categories c ON c.id = p.category_id
+      LEFT JOIN categories c ON c.id = p.categorie_id
     `;
 
     if (q) {
@@ -32,10 +40,10 @@ export async function getProduct(req, res, next) {
   try {
     const result = await query(
       `
-      SELECT p.id, p.name, p.price, p.stock, p.low_stock_threshold,
-             c.id AS category_id, c.name AS category_name
-      FROM products p
-      LEFT JOIN categories c ON c.id = p.category_id
+            SELECT p.id, p.nom AS name, p.prix AS price, p.image_url,
+              c.id AS category_id, c.nom AS category_name
+            FROM products p
+            LEFT JOIN categories c ON c.id = p.categorie_id
       WHERE p.id = $1
       `,
       [req.params.id]
@@ -50,15 +58,15 @@ export async function getProduct(req, res, next) {
 // Création d'un produit
 export async function createProduct(req, res, next) {
   try {
-    const { name, price, stock, categoryId, lowStockThreshold } = req.body;
+    const { name, price, categoryId, imageUrl } = productSchema.parse(req.body);
 
     const result = await query(
       `
-      INSERT INTO products (name, price, stock, category_id, low_stock_threshold)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO products (nom, prix, categorie_id, image_url)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
       `,
-      [name, price, stock, categoryId || null, lowStockThreshold || 5]
+      [name, price, categoryId || null, imageUrl || null]
     );
 
     return res.status(201).json(result.rows[0]);
@@ -70,20 +78,23 @@ export async function createProduct(req, res, next) {
 // Mise à jour d'un produit
 export async function updateProduct(req, res, next) {
   try {
-    const { name, price, stock, categoryId, lowStockThreshold } = req.body;
+    const { name, price, categoryId, imageUrl } = productSchema.parse(req.body);
 
     const result = await query(
       `
       UPDATE products
-      SET name = $1, price = $2, stock = $3, category_id = $4, low_stock_threshold = $5
-      WHERE id = $6
+      SET nom = $1, prix = $2, categorie_id = $3, image_url = $4
+      WHERE id = $5
       RETURNING *
       `,
-      [name, price, stock, categoryId || null, lowStockThreshold || 5, req.params.id]
+      [name, price, categoryId || null, imageUrl || null, req.params.id]
     );
 
     return res.json(result.rows[0]);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Données invalides" });
+    }
     return next(error);
   }
 }
@@ -94,6 +105,9 @@ export async function deleteProduct(req, res, next) {
     await query("DELETE FROM products WHERE id = $1", [req.params.id]);
     return res.status(204).send();
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Données invalides" });
+    }
     return next(error);
   }
 }

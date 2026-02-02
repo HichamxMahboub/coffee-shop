@@ -6,10 +6,11 @@ export async function getSalesHistory(req, res, next) {
     const { from, to } = req.query;
     const params = [];
     let sql = `
-      SELECT o.id, o.created_at, o.subtotal, o.tax_amount, o.total_amount, o.payment_method,
-             u.full_name AS cashier
+                        SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
+                    o.type_paiement AS payment_method,
+                    u.nom AS cashier
       FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
+            LEFT JOIN users u ON u.id = o.utilisateur_id
     `;
 
     if (from && to) {
@@ -31,21 +32,20 @@ export async function exportSalesCsv(req, res, next) {
   try {
     const result = await query(
       `
-      SELECT o.id, o.created_at, o.subtotal, o.tax_amount, o.total_amount, o.payment_method,
-             u.full_name AS cashier
+                        SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
+                    o.type_paiement AS payment_method,
+                    u.nom AS cashier
       FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
-      ORDER BY o.created_at DESC
+            LEFT JOIN users u ON u.id = o.utilisateur_id
+                        ORDER BY o.created_at DESC
       `
     );
 
-    const header = "id,date,subtotal,tva,total,paiement,caissier";
+    const header = "id,date,total,paiement,caissier";
     const rows = result.rows.map((row) =>
       [
         row.id,
         row.created_at.toISOString(),
-        row.subtotal,
-        row.tax_amount,
         row.total_amount,
         row.payment_method,
         row.cashier || "",

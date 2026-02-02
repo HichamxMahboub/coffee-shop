@@ -15,6 +15,14 @@ Créer la base et appliquer le schéma :
 ```bash
 createdb coffee_shop
 psql coffee_shop < backend/schema.sql
+psql coffee_shop < backend/seed.sql
+```
+
+Créer un admin automatiquement :
+
+```bash
+cd backend
+ADMIN_EMAIL=hicham@test.ma ADMIN_PASSWORD=12344321 ADMIN_NAME="Hicham" node scripts/create-admin.js
 ```
 
 Créer un utilisateur admin (exemple, à adapter) :
@@ -57,6 +65,7 @@ Backend (`backend/.env`):
 - `PORT=5000`
 - `DATABASE_URL=postgres://postgres:postgres@localhost:5432/coffee_shop`
 - `JWT_SECRET=change-moi`
+- `JWT_REFRESH_SECRET=change-moi-aussi`
 
 Frontend (`frontend/.env` optionnel):
 

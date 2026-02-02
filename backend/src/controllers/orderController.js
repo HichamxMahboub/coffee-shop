@@ -1,31 +1,115 @@
+import { z } from "zod";
 import { query, pool } from "../db.js";
+
+const orderSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: z.number().int(),
+        quantity: z.number().int().positive(),
+        unitPrice: z.number().positive(),
+      })
+    )
+    .min(1),
+  paymentMethod: z.string().min(1).optional(),
+  customerId: z.number().int().optional().nullable(),
+});
 
 // Création d'une commande (POS)
 export async function createOrder(req, res, next) {
   const client = await pool.connect();
   try {
-    const { items, paymentMethod, taxRate } = req.body;
-
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: "Le panier est vide" });
-    }
+    const { items, paymentMethod, customerId } = orderSchema.parse(req.body);
 
     await client.query("BEGIN");
 
-    const subtotal = items.reduce(
+    // Calcul du total
+    let total = items.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0
     );
-    const taxAmount = subtotal * (taxRate || 0.2);
-    const totalAmount = subtotal + taxAmount;
 
+    let appliedDiscount = 0;
+    let earnedPoints = 0;
+    let customerRow = null;
+
+    if (customerId) {
+      const customerResult = await client.query(
+        "SELECT id, points FROM customers WHERE id = $1 FOR UPDATE",
+        [customerId]
+      );
+      customerRow = customerResult.rows[0];
+
+      if (!customerRow) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Client introuvable" });
+      }
+
+      if (customerRow.points > 50) {
+        appliedDiscount = 5;
+        total = Math.max(0, total - appliedDiscount);
+      }
+
+      earnedPoints = Math.floor(total);
+    }
+
+    // Calcul des ingrédients requis par produit
+    const requiredByIngredient = new Map();
+
+    for (const item of items) {
+      const ingredientsResult = await client.query(
+        `
+        SELECT ingredient_id, quantite_par_unite
+        FROM product_ingredients
+        WHERE product_id = $1
+        `,
+        [item.productId]
+      );
+
+      for (const row of ingredientsResult.rows) {
+        const required = Number(row.quantite_par_unite) * item.quantity;
+        const current = requiredByIngredient.get(row.ingredient_id) || 0;
+        requiredByIngredient.set(row.ingredient_id, current + required);
+      }
+    }
+
+    // Vérification du stock d'ingrédients
+    for (const [ingredientId, required] of requiredByIngredient.entries()) {
+      const inventoryResult = await client.query(
+        `
+        SELECT id, nom, quantite, unite
+        FROM ingredients
+        WHERE id = $1
+        FOR UPDATE
+        `,
+        [ingredientId]
+      );
+
+      const ingredient = inventoryResult.rows[0];
+
+      if (!ingredient) {
+        await client.query("ROLLBACK");
+        return res
+          .status(400)
+          .json({ message: "Ingrédient introuvable dans l'inventaire" });
+      }
+
+      if (Number(ingredient.quantite) < required) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: `Stock insuffisant pour ${ingredient.nom} (${ingredient.unite})`,
+        });
+      }
+    }
+
+    // Enregistrement de la commande
     const orderResult = await client.query(
       `
-      INSERT INTO orders (user_id, subtotal, tax_amount, total_amount, payment_method)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO orders (utilisateur_id, customer_id, total, type_paiement)
+      VALUES ($1, $2, $3, $4)
       RETURNING id
       `,
-      [req.user.id, subtotal, taxAmount, totalAmount, paymentMethod || "cash"]
+      [req.user.id, customerId || null, total, paymentMethod || "cash"]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -33,23 +117,46 @@ export async function createOrder(req, res, next) {
     for (const item of items) {
       await client.query(
         `
-        INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+        INSERT INTO order_items (commande_id, produit_id, quantite, prix_unitaire)
         VALUES ($1, $2, $3, $4)
         `,
         [orderId, item.productId, item.quantity, item.unitPrice]
       );
+    }
 
+    // Déstockage des ingrédients
+    for (const [ingredientId, required] of requiredByIngredient.entries()) {
       await client.query(
-        "UPDATE products SET stock = stock - $1 WHERE id = $2",
-        [item.quantity, item.productId]
+        "UPDATE ingredients SET quantite = quantite - $1 WHERE id = $2",
+        [required, ingredientId]
       );
+    }
+
+    // Mise à jour des points fidélité
+    if (customerRow) {
+      const newPoints = Math.max(
+        0,
+        Number(customerRow.points) - (appliedDiscount ? 50 : 0) + earnedPoints
+      );
+      await client.query("UPDATE customers SET points = $1 WHERE id = $2", [
+        newPoints,
+        customerRow.id,
+      ]);
     }
 
     await client.query("COMMIT");
 
-    return res.status(201).json({ id: orderId, subtotal, taxAmount, totalAmount });
+    return res.status(201).json({
+      id: orderId,
+      total,
+      discount: appliedDiscount,
+      earnedPoints,
+    });
   } catch (error) {
     await client.query("ROLLBACK");
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Données invalides" });
+    }
     return next(error);
   } finally {
     client.release();
@@ -61,11 +168,12 @@ export async function getOrders(req, res, next) {
   try {
     const result = await query(
       `
-      SELECT o.id, o.created_at, o.subtotal, o.tax_amount, o.total_amount, o.payment_method,
-             u.full_name AS cashier
+                        SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
+                    o.type_paiement AS payment_method,
+                    u.nom AS cashier
       FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
-      ORDER BY o.created_at DESC
+            LEFT JOIN users u ON u.id = o.utilisateur_id
+                        ORDER BY o.created_at DESC
       `
     );
 
@@ -80,10 +188,11 @@ export async function getOrder(req, res, next) {
   try {
     const orderResult = await query(
       `
-      SELECT o.id, o.created_at, o.subtotal, o.tax_amount, o.total_amount, o.payment_method,
-             u.full_name AS cashier
+                        SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
+                    o.type_paiement AS payment_method,
+                    u.nom AS cashier
       FROM orders o
-      LEFT JOIN users u ON u.id = o.user_id
+            LEFT JOIN users u ON u.id = o.utilisateur_id
       WHERE o.id = $1
       `,
       [req.params.id]
@@ -91,10 +200,10 @@ export async function getOrder(req, res, next) {
 
     const itemsResult = await query(
       `
-      SELECT oi.quantity, oi.unit_price, p.name
+      SELECT oi.quantite, oi.prix_unitaire, p.nom
       FROM order_items oi
-      JOIN products p ON p.id = oi.product_id
-      WHERE oi.order_id = $1
+      JOIN products p ON p.id = oi.produit_id
+      WHERE oi.commande_id = $1
       `,
       [req.params.id]
     );

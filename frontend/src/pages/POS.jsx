@@ -3,7 +3,7 @@ import { Search, ShoppingCart, Trash2, ReceiptText, UserCircle } from "lucide-re
 import { apiFetch } from "../api/client.js";
 import { useCart } from "../context/CartContext.jsx";
 
-export default function PosPage() {
+export default function POS() {
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");

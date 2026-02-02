@@ -1,9 +1,9 @@
 import React from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/LoginPage.jsx";
-import DashboardPage from "./pages/DashboardPage.jsx";
-import PosPage from "./pages/PosPage.jsx";
-import InventoryPage from "./pages/InventoryPage.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+import POS from "./pages/POS.jsx";
+import Inventory from "./pages/Inventory.jsx";
 import SalesPage from "./pages/SalesPage.jsx";
 import AppLayout from "./components/AppLayout.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
@@ -28,9 +28,9 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<DashboardPage />} />
-        <Route path="pos" element={<PosPage />} />
-        <Route path="inventory" element={<InventoryPage />} />
+        <Route index element={<Dashboard />} />
+        <Route path="pos" element={<POS />} />
+        <Route path="inventory" element={<Inventory />} />
         <Route path="sales" element={<SalesPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

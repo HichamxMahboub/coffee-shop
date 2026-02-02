@@ -4,16 +4,16 @@
 
 /* Thème Café Premium */
 body {
-  @apply bg-slate-950 text-slate-50;
+  @apply bg-cream text-slate-900 dark:bg-slate-950 dark:text-slate-50;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 .card {
-  @apply rounded-2xl bg-slate-900/80 border border-slate-800 shadow-card;
+  @apply rounded-2xl bg-white/80 border border-slate-200 shadow-card dark:bg-slate-900/80 dark:border-slate-800;
 }
 
 .input {
-  @apply rounded-xl border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-400;
+  @apply rounded-xl border-slate-300 bg-white text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
 }
 
 .button-primary {
@@ -21,5 +21,21 @@ body {
 }
 
 .button-secondary {
-  @apply inline-flex items-center justify-center rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 transition;
+  @apply inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 transition dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt {
+    width: 80mm;
+    font-size: 12px;
+  }
 }

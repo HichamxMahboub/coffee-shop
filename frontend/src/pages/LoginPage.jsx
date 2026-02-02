@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { Coffee, Lock } from "lucide-react";
 import { apiFetch } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,6 +23,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       login(data);
+      navigate("/");
     } catch (err) {
       setError(err.message);
     } finally {

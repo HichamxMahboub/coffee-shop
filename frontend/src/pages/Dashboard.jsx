@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { apiFetch } from "../api/client.js";
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -68,7 +68,9 @@ export default function DashboardPage() {
               data.lowStock.map((item) => (
                 <li key={item.id} className="flex items-center justify-between">
                   <span>{item.name}</span>
-                  <span className="text-amber-300">{item.stock}</span>
+                  <span className="text-amber-300">
+                    {item.stock} {item.unit}
+                  </span>
                 </li>
               ))
             ) : (

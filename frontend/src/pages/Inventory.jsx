@@ -9,7 +9,7 @@ const defaultForm = {
   seuilAlerte: "0",
 };
 
-export default function InventoryPage() {
+export default function Inventory() {
   const [ingredients, setIngredients] = useState([]);
   const [form, setForm] = useState(defaultForm);
   const [editingId, setEditingId] = useState(null);
