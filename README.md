@@ -71,6 +71,41 @@ Frontend (`frontend/.env` optionnel):
 
 - `VITE_API_URL=http://localhost:5000/api`
 
+## RBAC (Rôles)
+- `admin` : accès complet.
+- `barista` : accès KDS uniquement (`/barista`, statut des commandes).
+- `cashier` : accès POS uniquement (produits, commandes, settings en lecture).
+
+## Déploiement Vercel (Frontend)
+
+Un fichier `frontend/vercel.json` est fourni pour le routage SPA.
+
+1) Build & Output (Vercel)
+- Framework: Vite
+- Output: `dist`
+
+2) Variables d’env (Vercel)
+- `VITE_API_URL=https://<votre-backend>/api`
+
+## Supabase (PostgreSQL)
+
+1) Créer un projet Supabase, récupérer l’URI de connexion (Database URL).
+
+2) Mettre à jour le backend:
+```
+DATABASE_URL=postgres://<user>:<password>@<host>:5432/<db>
+```
+
+3) Appliquer les migrations:
+```bash
+psql "${DATABASE_URL}" < backend/database/setup.sql
+psql "${DATABASE_URL}" < backend/database/migration.sql
+```
+
+4) Vérifier les connexions:
+- Backend: `npm run dev`
+- Frontend: `VITE_API_URL` pointe vers le backend déployé.
+
 ## Fonctionnalités
 - Dashboard : ventes du jour, commandes, alertes stock bas
 - POS : recherche, panier, TVA, encaissement

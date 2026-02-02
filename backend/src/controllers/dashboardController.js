@@ -45,6 +45,27 @@ export async function getDashboard(req, res, next) {
       `
     );
 
+    const revenueByHour = await query(
+      `
+      SELECT to_char(date_trunc('hour', created_at), 'HH24:00') AS hour,
+             SUM(total) AS total
+      FROM orders
+      WHERE created_at::date = CURRENT_DATE
+      GROUP BY date_trunc('hour', created_at)
+      ORDER BY date_trunc('hour', created_at)
+      `
+    );
+
+    const revenueByPayment = await query(
+      `
+      SELECT payment_method AS method, SUM(total) AS total
+      FROM orders
+      WHERE created_at::date = CURRENT_DATE
+      GROUP BY payment_method
+      ORDER BY total DESC
+      `
+    );
+
     const lowStock = lowStockResult.rows.map((row) => ({
       id: row.id,
       name: row.name,
@@ -63,6 +84,14 @@ export async function getDashboard(req, res, next) {
       topProducts: topProducts.rows.map((row) => ({
         name: row.name,
         quantity: Number(row.quantity),
+      })),
+      revenueByHour: revenueByHour.rows.map((row) => ({
+        hour: row.hour,
+        total: Number(row.total),
+      })),
+      revenueByPayment: revenueByPayment.rows.map((row) => ({
+        method: row.method,
+        total: Number(row.total),
       })),
     });
   } catch (error) {

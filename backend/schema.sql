@@ -19,12 +19,18 @@ CREATE TABLE IF NOT EXISTS customers (
 
 CREATE TABLE IF NOT EXISTS categories (
   id SERIAL PRIMARY KEY,
-  nom VARCHAR(120) NOT NULL
+  nom VARCHAR(120) NOT NULL,
+  name_en VARCHAR(120),
+  name_es VARCHAR(120),
+  name_ar VARCHAR(120)
 );
 
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   nom VARCHAR(160) NOT NULL,
+  name_en VARCHAR(160),
+  name_es VARCHAR(160),
+  name_ar VARCHAR(160),
   prix NUMERIC(10, 2) NOT NULL,
   categorie_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
   image_url TEXT,
@@ -46,12 +52,20 @@ CREATE TABLE IF NOT EXISTS product_ingredients (
   quantity_needed NUMERIC(12, 3) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key VARCHAR(120) PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   utilisateur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
   total NUMERIC(10, 2) NOT NULL,
   payment_method VARCHAR(40) NOT NULL DEFAULT 'cash',
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  cash_amount NUMERIC(10, 2),
+  card_amount NUMERIC(10, 2),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -60,7 +74,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   commande_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
   produit_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
   quantite INTEGER NOT NULL,
-  prix_unitaire NUMERIC(10, 2) NOT NULL
+  prix_unitaire NUMERIC(10, 2) NOT NULL,
+  notes TEXT
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

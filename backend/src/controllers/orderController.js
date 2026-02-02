@@ -6,28 +6,39 @@ const orderSchema = z.object({
     .array(
       z.object({
         productId: z.number().int(),
+        productVariantId: z.number().int().optional().nullable(),
         quantity: z.number().int().positive(),
         unitPrice: z.number().positive(),
+        notes: z.string().max(280).optional().nullable(),
       })
     )
     .min(1),
   paymentMethod: z.string().min(1).optional(),
   customerId: z.number().int().optional().nullable(),
+  cashAmount: z.number().nonnegative().optional().nullable(),
+  cardAmount: z.number().nonnegative().optional().nullable(),
 });
 
 // Création d'une commande (POS)
 export async function createOrder(req, res, next) {
   const client = await pool.connect();
   try {
-    const { items, paymentMethod, customerId } = orderSchema.parse(req.body);
+    const { items, paymentMethod, customerId, cashAmount, cardAmount } =
+      orderSchema.parse(req.body);
 
     await client.query("BEGIN");
 
+    const settingsResult = await client.query(
+      "SELECT value FROM settings WHERE key = 'tax_rate'"
+    );
+    const taxRate = Number(settingsResult.rows[0]?.value ?? 0.2);
+
     // Calcul du total
-    let total = items.reduce(
+    const totalHt = items.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0
     );
+    let total = totalHt * (1 + taxRate);
 
     let appliedDiscount = 0;
     let earnedPoints = 0;
@@ -57,16 +68,47 @@ export async function createOrder(req, res, next) {
     const requiredByIngredient = new Map();
 
     for (const item of items) {
-      const ingredientsResult = await client.query(
+      let variantId = item.productVariantId || null;
+      let productId = item.productId;
+
+      if (!variantId) {
+        const variantResult = await client.query(
+          `
+          SELECT id
+          FROM product_variants
+          WHERE product_id = $1
+          ORDER BY (size = 'M') DESC, (size = 'S') DESC, id ASC
+          LIMIT 1
+          `,
+          [productId]
+        );
+        variantId = variantResult.rows[0]?.id || null;
+      }
+
+      if (!variantId) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: "Aucune variante trouvée pour ce produit",
+        });
+      }
+
+      const recipeResult = await client.query(
         `
         SELECT ingredient_id, quantity_needed
-        FROM product_ingredients
-        WHERE product_id = $1
+        FROM recipe_items
+        WHERE product_variant_id = $1
         `,
-        [item.productId]
+        [variantId]
       );
 
-      for (const row of ingredientsResult.rows) {
+      if (recipeResult.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: "Aucune recette définie pour cette variante",
+        });
+      }
+
+      for (const row of recipeResult.rows) {
         const required = Number(row.quantity_needed) * item.quantity;
         const current = requiredByIngredient.get(row.ingredient_id) || 0;
         requiredByIngredient.set(row.ingredient_id, current + required);
@@ -103,13 +145,36 @@ export async function createOrder(req, res, next) {
     }
 
     // Enregistrement de la commande
+    const finalPaymentMethod = paymentMethod || "cash";
+
+    if (finalPaymentMethod === "mixed") {
+      if (cashAmount == null || cardAmount == null) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Montants cash/carte requis" });
+      }
+
+      const mixedTotal = Number(cashAmount) + Number(cardAmount);
+      if (Math.abs(mixedTotal - total) > 0.01) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Montants invalides" });
+      }
+    }
+
     const orderResult = await client.query(
       `
-      INSERT INTO orders (utilisateur_id, customer_id, total, payment_method)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO orders (utilisateur_id, customer_id, total, payment_method, status, cash_amount, card_amount)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
       `,
-      [req.user.id, customerId || null, total, paymentMethod || "cash"]
+      [
+        req.user.id,
+        customerId || null,
+        total,
+        finalPaymentMethod,
+        "pending",
+        finalPaymentMethod === "cash" ? total : cashAmount || null,
+        finalPaymentMethod === "card" ? total : cardAmount || null,
+      ]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -117,10 +182,10 @@ export async function createOrder(req, res, next) {
     for (const item of items) {
       await client.query(
         `
-        INSERT INTO order_items (commande_id, produit_id, quantite, prix_unitaire)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO order_items (commande_id, produit_id, quantite, prix_unitaire, notes)
+        VALUES ($1, $2, $3, $4, $5)
         `,
-        [orderId, item.productId, item.quantity, item.unitPrice]
+        [orderId, item.productId, item.quantity, item.unitPrice, item.notes || null]
       );
     }
 
@@ -149,6 +214,7 @@ export async function createOrder(req, res, next) {
     return res.status(201).json({
       id: orderId,
       total,
+      status: "pending",
       discount: appliedDiscount,
       earnedPoints,
     });
@@ -200,7 +266,7 @@ export async function getOrder(req, res, next) {
 
     const itemsResult = await query(
       `
-      SELECT oi.quantite, oi.prix_unitaire, p.nom
+      SELECT oi.quantite, oi.prix_unitaire, oi.notes, p.nom
       FROM order_items oi
       JOIN products p ON p.id = oi.produit_id
       WHERE oi.commande_id = $1

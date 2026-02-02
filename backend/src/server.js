@@ -8,6 +8,10 @@ import salesRoutes from "./routes/salesRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
 import ingredientRoutes from "./routes/ingredientRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
+import baristaRoutes from "./routes/baristaRoutes.js";
+import reportsRoutes from "./routes/reportsRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config();
 
@@ -23,6 +27,10 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/ingredients", ingredientRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/barista", baristaRoutes);
+app.use("/api/reports", reportsRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

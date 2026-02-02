@@ -3,13 +3,20 @@ import {
   createOrder,
   getOrders,
   getOrder,
+  updateOrderStatus,
 } from "../controllers/orders.controller.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/", requireAuth, getOrders);
-router.get("/:id", requireAuth, getOrder);
-router.post("/", requireAuth, createOrder);
+router.get("/", requireAuth, requireRole(["admin"]), getOrders);
+router.get("/:id", requireAuth, requireRole(["admin"]), getOrder);
+router.post("/", requireAuth, requireRole(["admin", "cashier"]), createOrder);
+router.patch(
+  "/:id/status",
+  requireAuth,
+  requireRole(["admin", "barista"]),
+  updateOrderStatus
+);
 
 export default router;

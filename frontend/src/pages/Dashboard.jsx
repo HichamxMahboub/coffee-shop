@@ -11,9 +11,13 @@ import {
   Line,
 } from "recharts";
 import { apiFetch } from "../api/client.js";
+import { formatPrice } from "../utils/formatPrice.js";
+import { useTranslation } from "react-i18next";
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
+  const [currency, setCurrency] = useState({ symbol: "€", position: "suffix" });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -21,6 +25,11 @@ export default function Dashboard() {
       try {
         const result = await apiFetch("/dashboard");
         setData(result);
+        const settings = await apiFetch("/settings");
+        setCurrency({
+          symbol: settings.currencySymbol || "€",
+          position: settings.currencyPosition || "suffix",
+        });
       } catch (err) {
         setError(err.message);
       }
@@ -35,25 +44,27 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-widest text-slate-400">Tableau de bord</p>
-        <h2 className="mt-2 text-3xl font-semibold">Résumé du jour</h2>
+        <p className="text-xs uppercase tracking-widest text-slate-400">
+          {t("dashboard.title")}
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold">{t("dashboard.subtitle")}</h2>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="card p-6">
           <div className="flex items-center gap-3 text-coffee-300">
             <TrendingUp />
-            <p className="text-sm font-semibold">Ventes du jour</p>
+            <p className="text-sm font-semibold">{t("dashboard.todaySales")}</p>
           </div>
           <p className="mt-4 text-3xl font-semibold">
-            {data ? `${data.todaySales.toFixed(2)} €` : "—"}
+            {data ? formatPrice(data.todaySales, currency.symbol, currency.position) : "—"}
           </p>
         </div>
 
         <div className="card p-6">
           <div className="flex items-center gap-3 text-coffee-300">
             <ShoppingBasket />
-            <p className="text-sm font-semibold">Commandes</p>
+            <p className="text-sm font-semibold">{t("dashboard.orders")}</p>
           </div>
           <p className="mt-4 text-3xl font-semibold">{data ? data.todayOrders : "—"}</p>
         </div>
@@ -61,7 +72,7 @@ export default function Dashboard() {
         <div className="card p-6">
           <div className="flex items-center gap-3 text-amber-300">
             <AlertTriangle />
-            <p className="text-sm font-semibold">Alertes stock bas</p>
+            <p className="text-sm font-semibold">{t("dashboard.lowStock")}</p>
           </div>
           <ul className="mt-4 space-y-2 text-sm text-slate-200">
             {data?.lowStock?.length ? (
@@ -74,7 +85,7 @@ export default function Dashboard() {
                 </li>
               ))
             ) : (
-              <li className="text-slate-400">Aucune alerte</li>
+              <li className="text-slate-400">{t("dashboard.noAlerts")}</li>
             )}
           </ul>
         </div>
@@ -82,7 +93,7 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card p-6">
-          <p className="text-sm font-semibold">CA par jour</p>
+          <p className="text-sm font-semibold">{t("dashboard.revenueByDay")}</p>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data?.revenueByDay || []}>
@@ -96,7 +107,7 @@ export default function Dashboard() {
         </div>
 
         <div className="card p-6">
-          <p className="text-sm font-semibold">Top 5 ventes</p>
+          <p className="text-sm font-semibold">{t("dashboard.topProducts")}</p>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data?.topProducts || []}>

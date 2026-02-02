@@ -8,6 +8,10 @@ body {
   font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
+html[dir="rtl"] body {
+  direction: rtl;
+}
+
 .card {
   @apply rounded-2xl bg-white/80 border border-slate-200 shadow-card dark:bg-slate-900/80 dark:border-slate-800;
 }
@@ -24,6 +28,10 @@ body {
   @apply inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 transition dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800;
 }
 
+.print-only {
+  display: none;
+}
+
 @media print {
   body {
     background: white !important;
@@ -31,6 +39,14 @@ body {
   }
 
   .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .receipt-screen {
     display: none !important;
   }
 

@@ -17,3 +17,17 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ message: "Token invalide" });
   }
 }
+
+export function requireRole(roles = []) {
+  const normalized = roles.map((role) => role.toLowerCase());
+  return (req, res, next) => {
+    const role = req.user?.role?.toLowerCase();
+    if (!role) {
+      return res.status(403).json({ message: "Accès refusé" });
+    }
+    if (!normalized.includes(role)) {
+      return res.status(403).json({ message: "Accès refusé" });
+    }
+    return next();
+  };
+}

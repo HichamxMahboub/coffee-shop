@@ -8,18 +8,22 @@ const orderSchema = z.object({
         productId: z.number().int(),
         quantity: z.number().int().positive(),
         unitPrice: z.number().positive(),
+        notes: z.string().max(280).optional().nullable(),
       })
     )
     .min(1),
   paymentMethod: z.string().min(1).optional(),
   customerId: z.number().int().optional().nullable(),
+  cashAmount: z.number().nonnegative().optional().nullable(),
+  cardAmount: z.number().nonnegative().optional().nullable(),
 });
 
 // Création d'une commande (POS)
 export async function createOrder(req, res, next) {
   const client = await pool.connect();
   try {
-    const { items, paymentMethod, customerId } = orderSchema.parse(req.body);
+    const { items, paymentMethod, customerId, cashAmount, cardAmount } =
+      orderSchema.parse(req.body);
 
     await client.query("BEGIN");
 
@@ -99,13 +103,36 @@ export async function createOrder(req, res, next) {
       }
     }
 
+    const finalPaymentMethod = paymentMethod || "cash";
+
+    if (finalPaymentMethod === "mixed") {
+      if (cashAmount == null || cardAmount == null) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Montants cash/carte requis" });
+      }
+
+      const mixedTotal = Number(cashAmount) + Number(cardAmount);
+      if (Math.abs(mixedTotal - total) > 0.01) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Montants invalides" });
+      }
+    }
+
     const orderResult = await client.query(
       `
-      INSERT INTO orders (utilisateur_id, customer_id, total, payment_method)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO orders (utilisateur_id, customer_id, total, payment_method, status, cash_amount, card_amount)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
       `,
-      [req.user.id, customerId || null, total, paymentMethod || "cash"]
+      [
+        req.user.id,
+        customerId || null,
+        total,
+        finalPaymentMethod,
+        "pending",
+        finalPaymentMethod === "cash" ? total : cashAmount || null,
+        finalPaymentMethod === "card" ? total : cardAmount || null,
+      ]
     );
 
     const orderId = orderResult.rows[0].id;
@@ -113,10 +140,10 @@ export async function createOrder(req, res, next) {
     for (const item of items) {
       await client.query(
         `
-        INSERT INTO order_items (commande_id, produit_id, quantite, prix_unitaire)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO order_items (commande_id, produit_id, quantite, prix_unitaire, notes)
+        VALUES ($1, $2, $3, $4, $5)
         `,
-        [orderId, item.productId, item.quantity, item.unitPrice]
+        [orderId, item.productId, item.quantity, item.unitPrice, item.notes || null]
       );
     }
 
@@ -143,6 +170,7 @@ export async function createOrder(req, res, next) {
     return res.status(201).json({
       id: orderId,
       total,
+      status: "pending",
       discount: appliedDiscount,
       earnedPoints,
     });
@@ -177,6 +205,30 @@ export async function getOrders(req, res, next) {
   }
 }
 
+export async function updateOrderStatus(req, res, next) {
+  try {
+    const { status } = z
+      .object({ status: z.enum(["pending", "completed", "cancelled"]) })
+      .parse(req.body);
+
+    const result = await query(
+      "UPDATE orders SET status = $1 WHERE id = $2 RETURNING id, status",
+      [status, req.params.id]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ message: "Commande introuvable" });
+    }
+
+    return res.json(result.rows[0]);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Données invalides" });
+    }
+    return next(error);
+  }
+}
+
 // Détail d'une commande
 export async function getOrder(req, res, next) {
   try {
@@ -194,7 +246,7 @@ export async function getOrder(req, res, next) {
 
     const itemsResult = await query(
       `
-      SELECT oi.quantite, oi.prix_unitaire, p.nom
+      SELECT oi.quantite, oi.prix_unitaire, oi.notes, p.nom
       FROM order_items oi
       JOIN products p ON p.id = oi.produit_id
       WHERE oi.commande_id = $1

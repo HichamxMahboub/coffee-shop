@@ -4,14 +4,23 @@ const CartContext = createContext(null);
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
-  const taxRate = 0.2;
+  const [taxRate, setTaxRate] = useState(0.2);
+  const [currency, setCurrency] = useState({
+    symbol: "€",
+    position: "suffix",
+  });
 
-  const addItem = (product) => {
+  const buildItemId = (productId, productVariantId) =>
+    `${productId}:${productVariantId ?? "base"}`;
+
+  const addItem = (product, variant) => {
+    const productVariantId = variant?.id ?? null;
+    const itemId = buildItemId(product.id, productVariantId);
     setItems((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
+      const existing = prev.find((item) => item.itemId === itemId);
       if (existing) {
         return prev.map((item) =>
-          item.productId === product.id
+          item.itemId === itemId
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -19,24 +28,54 @@ export function CartProvider({ children }) {
       return [
         ...prev,
         {
+          itemId,
           productId: product.id,
+          productVariantId,
           name: product.name,
-          unitPrice: product.price,
+          variantLabel: variant?.label || null,
+          unitPrice: variant?.price ?? product.price,
           quantity: 1,
         },
       ];
     });
   };
 
-  const removeItem = (productId) => {
-    setItems((prev) => prev.filter((item) => item.productId !== productId));
+  const resolveItemId = (productId, productVariantId) => {
+    if (productVariantId !== undefined && productVariantId !== null) {
+      return buildItemId(productId, productVariantId);
+    }
+    const matches = items.filter((item) => item.productId === productId);
+    return matches.length === 1 ? matches[0].itemId : null;
   };
 
-  const updateQuantity = (productId, quantity) => {
+  const removeItem = (productId, productVariantId) => {
+    const itemId =
+      productId && !String(productId).includes(":")
+        ? resolveItemId(productId, productVariantId)
+        : productId;
+    if (!itemId) return;
+    setItems((prev) => prev.filter((item) => item.itemId !== itemId));
+  };
+
+  const updateQuantity = (productId, quantity, productVariantId) => {
+    const itemId =
+      productId && !String(productId).includes(":")
+        ? resolveItemId(productId, productVariantId)
+        : productId;
+    if (!itemId) return;
     setItems((prev) =>
-      prev.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
-      )
+      prev.map((item) => (item.itemId === itemId ? { ...item, quantity } : item))
+    );
+  };
+
+  const updateNotes = (productId, notes, productVariantId) => {
+    const itemId =
+      productId && !String(productId).includes(":")
+        ? resolveItemId(productId, productVariantId)
+        : productId;
+    if (!itemId) return;
+    setItems((prev) =>
+      prev.map((item) => (item.itemId === itemId ? { ...item, notes } : item))
     );
   };
 
@@ -52,13 +91,17 @@ export function CartProvider({ children }) {
       addItem,
       removeItem,
       updateQuantity,
+      updateNotes,
       clearCart,
       subtotal,
       taxAmount,
       total,
       taxRate,
+      setTaxRate,
+      currency,
+      setCurrency,
     }),
-    [items, subtotal, taxAmount, total]
+    [items, subtotal, taxAmount, total, taxRate, currency]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

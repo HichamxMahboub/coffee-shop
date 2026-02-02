@@ -148,7 +148,7 @@ export default function PosPage() {
             <p className="text-sm text-slate-400">Aucun article ajouté</p>
           ) : (
             items.map((item) => (
-              <div key={item.productId} className="flex items-center justify-between">
+              <div key={item.itemId || item.productId} className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold">{item.name}</p>
                   <p className="text-xs text-slate-400">{item.unitPrice.toFixed(2)} €</p>
@@ -160,10 +160,10 @@ export default function PosPage() {
                     className="input w-16 text-center"
                     value={item.quantity}
                     onChange={(event) =>
-                      updateQuantity(item.productId, Number(event.target.value))
+                      updateQuantity(item.itemId || item.productId, Number(event.target.value))
                     }
                   />
-                  <button type="button" onClick={() => removeItem(item.productId)}>
+                  <button type="button" onClick={() => removeItem(item.itemId || item.productId)}>
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </button>
                 </div>

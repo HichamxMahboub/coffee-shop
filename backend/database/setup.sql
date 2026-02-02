@@ -23,11 +23,29 @@ CREATE TABLE IF NOT EXISTS product_ingredients (
   quantity_needed NUMERIC(10, 2) NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key VARCHAR(120) PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+INSERT INTO settings (key, value)
+VALUES ('currency_symbol', '€'), ('currency_position', 'suffix')
+ON CONFLICT (key) DO NOTHING;
+
 ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) NOT NULL DEFAULT 'cash';
 
 ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS customer_id INTEGER;
+
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending';
+
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS cash_amount NUMERIC(10, 2);
+
+ALTER TABLE orders
+  ADD COLUMN IF NOT EXISTS card_amount NUMERIC(10, 2);
 
 CREATE INDEX IF NOT EXISTS idx_product_ingredients_product
   ON product_ingredients (product_id);

@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Download, Calendar } from "lucide-react";
 import { apiFetch } from "../api/client.js";
+import { formatPrice } from "../utils/formatPrice.js";
+import { useTranslation } from "react-i18next";
 
 export default function SalesPage() {
+  const { t } = useTranslation();
   const [sales, setSales] = useState([]);
+  const [currency, setCurrency] = useState({ symbol: "€", position: "suffix" });
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [error, setError] = useState("");
@@ -13,6 +17,11 @@ export default function SalesPage() {
       const query = from && to ? `?from=${from}&to=${to}` : "";
       const data = await apiFetch(`/sales${query}`);
       setSales(data);
+      const settings = await apiFetch("/settings");
+      setCurrency({
+        symbol: settings.currencySymbol || "€",
+        position: settings.currencyPosition || "suffix",
+      });
     } catch (err) {
       setError(err.message);
     }
@@ -25,8 +34,10 @@ export default function SalesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs uppercase tracking-widest text-slate-400">Ventes</p>
-        <h2 className="mt-2 text-3xl font-semibold">Historique des transactions</h2>
+        <p className="text-xs uppercase tracking-widest text-slate-400">
+          {t("sales.title")}
+        </p>
+        <h2 className="mt-2 text-3xl font-semibold">{t("sales.subtitle")}</h2>
       </div>
 
       <div className="card p-6">
@@ -50,14 +61,14 @@ export default function SalesPage() {
             />
           </div>
           <button type="button" className="button-secondary" onClick={loadSales}>
-            Filtrer
+            {t("common.filter")}
           </button>
           <a
             className="button-primary"
             href={`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/sales/export`}
           >
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            {t("common.exportCsv")}
           </a>
         </div>
       </div>
@@ -72,13 +83,17 @@ export default function SalesPage() {
               className="flex items-center justify-between rounded-xl border border-slate-800 px-4 py-3"
             >
               <div>
-                <p className="font-semibold">Commande #{sale.id}</p>
+                <p className="font-semibold">
+                  {t("sales.orderLabel")} #{sale.id}
+                </p>
                 <p className="text-xs text-slate-400">
                   {new Date(sale.created_at).toLocaleString()}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-coffee-200">{sale.total_amount.toFixed(2)} €</p>
+                <p className="text-coffee-200">
+                  {formatPrice(sale.total_amount, currency.symbol, currency.position)}
+                </p>
                 <p className="text-xs text-slate-400">{sale.cashier || ""}</p>
               </div>
             </div>

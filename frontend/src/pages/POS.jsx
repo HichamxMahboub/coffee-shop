@@ -1,10 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, ShoppingCart, Trash2, ReceiptText, UserCircle } from "lucide-react";
+import {
+  Search,
+  ShoppingCart,
+  Trash2,
+  ReceiptText,
+  UserCircle,
+  Pencil,
+} from "lucide-react";
 import { apiFetch } from "../api/client.js";
 import { useCart } from "../context/CartContext.jsx";
 import toast from "react-hot-toast";
+import Receipt from "../components/Receipt.jsx";
+import { formatPrice } from "../utils/formatPrice.js";
+import { useTranslation } from "react-i18next";
 
 export default function POS() {
+  const { i18n } = useTranslation();
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
@@ -12,20 +23,43 @@ export default function POS() {
   const [orderStatus, setOrderStatus] = useState("");
   const [customers, setCustomers] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const { items, addItem, removeItem, updateQuantity, subtotal, taxAmount, total, clearCart } =
-    useCart();
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [cashAmount, setCashAmount] = useState("");
+  const [cardAmount, setCardAmount] = useState("");
+  const [settings, setSettings] = useState({
+    taxRate: 0.2,
+    cafeName: "Café Premium",
+    cafeAddress: "",
+  });
+  const {
+    items,
+    addItem,
+    removeItem,
+    updateQuantity,
+    updateNotes,
+    subtotal,
+    taxAmount,
+    total,
+    clearCart,
+    setTaxRate,
+    setCurrency,
+    currency,
+  } = useCart();
 
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await apiFetch(`/products${query ? `?q=${query}` : ""}`);
+        const params = new URLSearchParams();
+        if (query) params.set("q", query);
+        if (i18n.language) params.set("lang", i18n.language);
+        const data = await apiFetch(`/products${params.toString() ? `?${params}` : ""}`);
         setProducts(data);
       } catch (err) {
         setError(err.message);
       }
     };
     load();
-  }, [query]);
+  }, [query, i18n.language]);
 
   useEffect(() => {
     const loadCustomers = async () => {
@@ -39,6 +73,23 @@ export default function POS() {
     loadCustomers();
   }, []);
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await apiFetch("/settings");
+        setSettings(data);
+        setTaxRate(data.taxRate || 0.2);
+        setCurrency({
+          symbol: data.currencySymbol || "€",
+          position: data.currencyPosition || "suffix",
+        });
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    loadSettings();
+  }, [setTaxRate]);
+
   const filtered = useMemo(() => products, [products]);
 
   const handleCheckout = async () => {
@@ -47,14 +98,19 @@ export default function POS() {
     try {
       const payload = {
         items,
-        paymentMethod: "card",
+        paymentMethod,
         customerId: selectedCustomerId ? Number(selectedCustomerId) : null,
+        cashAmount: cashAmount ? Number(cashAmount) : null,
+        cardAmount: cardAmount ? Number(cardAmount) : null,
       };
       await apiFetch("/orders", {
         method: "POST",
         body: JSON.stringify(payload),
       });
       clearCart();
+      setCashAmount("");
+      setCardAmount("");
+      setPaymentMethod("card");
       setOrderStatus("Commande enregistrée !");
       toast.success("Vente confirmée");
     } catch (err) {
@@ -135,7 +191,9 @@ export default function POS() {
             >
               <p className="text-sm text-slate-400">{product.category_name || "Café"}</p>
               <p className="mt-2 text-lg font-semibold">{product.name}</p>
-              <p className="mt-4 text-coffee-200">{product.price.toFixed(2)} €</p>
+              <p className="mt-4 text-coffee-200">
+                {formatPrice(product.price, currency.symbol, currency.position)}
+              </p>
               {product.image_url && (
                 <p className="mt-2 text-xs text-slate-400">Image: {product.image_url}</p>
               )}
@@ -155,10 +213,15 @@ export default function POS() {
             <p className="text-sm text-slate-400">Aucun article ajouté</p>
           ) : (
             items.map((item) => (
-              <div key={item.productId} className="flex items-center justify-between">
+              <div key={item.itemId || item.productId} className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold">{item.name}</p>
-                  <p className="text-xs text-slate-400">{item.unitPrice.toFixed(2)} €</p>
+                    <p className="text-xs text-slate-400">
+                      {formatPrice(item.unitPrice, currency.symbol, currency.position)}
+                    </p>
+                    {item.notes && (
+                      <p className="text-xs text-slate-400">Note : {item.notes}</p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -167,10 +230,25 @@ export default function POS() {
                     className="input w-16 text-center"
                     value={item.quantity}
                     onChange={(event) =>
-                      updateQuantity(item.productId, Number(event.target.value))
+                      updateQuantity(item.itemId || item.productId, Number(event.target.value))
                     }
                   />
-                  <button type="button" onClick={() => removeItem(item.productId)}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = window.prompt(
+                          "Notes pour cet article",
+                          item.notes || ""
+                        );
+                        if (next !== null) {
+                          updateNotes(item.itemId || item.productId, next.trim());
+                        }
+                      }}
+                      title="Ajouter une note"
+                    >
+                      <Pencil className="h-4 w-4 text-slate-300" />
+                    </button>
+                  <button type="button" onClick={() => removeItem(item.itemId || item.productId)}>
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </button>
                 </div>
@@ -182,25 +260,59 @@ export default function POS() {
         <div className="mt-6 border-t border-slate-800 pt-4 text-sm">
           <div className="flex justify-between text-slate-300">
             <span>Sous-total</span>
-            <span>{subtotal.toFixed(2)} €</span>
+            <span>{formatPrice(subtotal, currency.symbol, currency.position)}</span>
           </div>
           <div className="mt-2 flex justify-between text-slate-300">
             <span>TVA (20%)</span>
-            <span>{taxAmount.toFixed(2)} €</span>
+            <span>{formatPrice(taxAmount, currency.symbol, currency.position)}</span>
           </div>
           {discount > 0 && (
             <div className="mt-2 flex justify-between text-coffee-200">
               <span>Remise fidélité</span>
-              <span>-{discount.toFixed(2)} €</span>
+              <span>-{formatPrice(discount, currency.symbol, currency.position)}</span>
             </div>
           )}
           <div className="mt-3 flex justify-between text-lg font-semibold">
             <span>Total</span>
-            <span>{totalAfterDiscount.toFixed(2)} €</span>
+            <span>{formatPrice(totalAfterDiscount, currency.symbol, currency.position)}</span>
           </div>
         </div>
 
         {orderStatus && <p className="mt-4 text-xs text-coffee-200">{orderStatus}</p>}
+
+        <div className="mt-6 space-y-3 text-sm">
+          <p className="text-xs uppercase tracking-widest text-slate-400">Paiement</p>
+          <select
+            className="input w-full"
+            value={paymentMethod}
+            onChange={(event) => setPaymentMethod(event.target.value)}
+          >
+            <option value="cash">Cash</option>
+            <option value="card">Carte</option>
+            <option value="mixed">Mixte</option>
+          </select>
+
+          {paymentMethod === "mixed" && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                placeholder="Montant cash"
+                value={cashAmount}
+                onChange={(event) => setCashAmount(event.target.value)}
+              />
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                placeholder="Montant carte"
+                value={cardAmount}
+                onChange={(event) => setCardAmount(event.target.value)}
+              />
+            </div>
+          )}
+        </div>
 
         <button
           type="button"
@@ -221,31 +333,24 @@ export default function POS() {
           Imprimer le ticket
         </button>
 
-        <div className="receipt mt-6 rounded-xl border border-slate-800 p-4 text-xs">
-          <p className="text-center font-semibold">Café Premium</p>
-          <p className="text-center text-slate-400">Ticket 80mm</p>
-          <div className="mt-4 space-y-2">
-            {items.map((item) => (
-              <div key={item.productId} className="flex justify-between">
-                <span>
-                  {item.name} x{item.quantity}
-                </span>
-                <span>{(item.unitPrice * item.quantity).toFixed(2)} €</span>
-              </div>
-            ))}
-          </div>
-          {discount > 0 && (
-            <div className="mt-2 flex justify-between">
-              <span>Remise</span>
-              <span>-{discount.toFixed(2)} €</span>
-            </div>
-          )}
-          <div className="mt-3 flex justify-between font-semibold">
-            <span>Total</span>
-            <span>{totalAfterDiscount.toFixed(2)} €</span>
-          </div>
-          <p className="mt-4 text-center text-slate-400">Merci et à bientôt</p>
-        </div>
+        <Receipt
+          className="receipt-screen mt-6"
+          items={items}
+          discount={discount}
+          total={totalAfterDiscount}
+          cafeName={settings.cafeName}
+          cafeAddress={settings.cafeAddress}
+          currency={currency}
+        />
+        <Receipt
+          className="print-only"
+          items={items}
+          discount={discount}
+          total={totalAfterDiscount}
+          cafeName={settings.cafeName}
+          cafeAddress={settings.cafeAddress}
+          currency={currency}
+        />
       </aside>
     </div>
   );
