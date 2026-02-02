@@ -15,10 +15,10 @@ export async function getDashboard(req, res, next) {
 
     const lowStockResult = await query(
       `
-      SELECT id, nom, quantite, seuil_alerte, unite
+      SELECT id, name, stock_quantity, alert_threshold, unit
       FROM ingredients
-      WHERE quantite <= seuil_alerte
-      ORDER BY quantite ASC
+      WHERE stock_quantity <= alert_threshold
+      ORDER BY stock_quantity ASC
       LIMIT 10
       `
     );
@@ -47,10 +47,10 @@ export async function getDashboard(req, res, next) {
 
     const lowStock = lowStockResult.rows.map((row) => ({
       id: row.id,
-      name: row.nom,
-      stock: Number(row.quantite),
-      threshold: Number(row.seuil_alerte),
-      unit: row.unite,
+      name: row.name,
+      stock: Number(row.stock_quantity),
+      threshold: Number(row.alert_threshold),
+      unit: row.unit,
     }));
 
     return res.json({

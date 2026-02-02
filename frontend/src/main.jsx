@@ -6,6 +6,7 @@ import "./styles/index.css";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { CartProvider } from "./context/CartContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { Toaster } from "react-hot-toast";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -14,6 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <AuthProvider>
           <CartProvider>
             <App />
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>

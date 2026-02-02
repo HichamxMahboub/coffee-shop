@@ -2,20 +2,20 @@ import { z } from "zod";
 import { query } from "../db.js";
 
 const customerSchema = z.object({
-  nom: z.string().min(2),
+  name: z.string().min(2),
   email: z.string().email().optional().nullable(),
 });
 
 const updateSchema = z.object({
-  nom: z.string().min(2).optional(),
+  name: z.string().min(2).optional(),
   email: z.string().email().optional().nullable(),
-  points: z.number().int().nonnegative().optional(),
+  loyaltyPoints: z.number().int().nonnegative().optional(),
 });
 
 export async function getCustomers(req, res, next) {
   try {
     const result = await query(
-      "SELECT id, nom, email, points FROM customers ORDER BY nom"
+      "SELECT id, name, email, loyalty_points FROM customers ORDER BY name"
     );
     return res.json(result.rows);
   } catch (error) {
@@ -25,10 +25,10 @@ export async function getCustomers(req, res, next) {
 
 export async function createCustomer(req, res, next) {
   try {
-    const { nom, email } = customerSchema.parse(req.body);
+    const { name, email } = customerSchema.parse(req.body);
     const result = await query(
-      "INSERT INTO customers (nom, email) VALUES ($1, $2) RETURNING *",
-      [nom, email || null]
+      "INSERT INTO customers (name, email) VALUES ($1, $2) RETURNING *",
+      [name, email || null]
     );
     return res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -52,11 +52,11 @@ export async function updateCustomer(req, res, next) {
 
     const current = existing.rows[0];
     const result = await query(
-      "UPDATE customers SET nom = $1, email = $2, points = $3 WHERE id = $4 RETURNING *",
+      "UPDATE customers SET name = $1, email = $2, loyalty_points = $3 WHERE id = $4 RETURNING *",
       [
-        data.nom ?? current.nom,
+        data.name ?? current.name,
         data.email ?? current.email,
-        data.points ?? current.points,
+        data.loyaltyPoints ?? current.loyalty_points,
         req.params.id,
       ]
     );

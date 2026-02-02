@@ -14,7 +14,7 @@ Créer la base et appliquer le schéma :
 
 ```bash
 createdb coffee_shop
-psql coffee_shop < backend/schema.sql
+psql coffee_shop < backend/database/setup.sql
 psql coffee_shop < backend/seed.sql
 ```
 
@@ -32,7 +32,7 @@ psql coffee_shop
 ```
 
 ```sql
-INSERT INTO users (full_name, email, role, password_hash)
+INSERT INTO users (nom, email, role, password_hash)
 VALUES (
   'Admin Café',
   'admin@cafe.com',
@@ -74,7 +74,7 @@ Frontend (`frontend/.env` optionnel):
 ## Fonctionnalités
 - Dashboard : ventes du jour, commandes, alertes stock bas
 - POS : recherche, panier, TVA, encaissement
-- Inventaire : CRUD produits
+- Inventaire : gestion des ingrédients + alertes stock bas
 - Ventes : historique + export CSV
 - Auth : login sécurisé JWT
 

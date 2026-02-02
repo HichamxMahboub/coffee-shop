@@ -6,6 +6,7 @@ import {
   ShoppingBag,
   Package,
   BarChart3,
+  LineChart,
   LogOut,
   Sun,
   Moon,
@@ -17,7 +18,8 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/pos", label: "POS", icon: ShoppingBag },
   { to: "/inventory", label: "Inventaire", icon: Package },
-  { to: "/sales", label: "Ventes", icon: BarChart3 },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/sales", label: "Ventes", icon: LineChart },
 ];
 
 export default function AppLayout() {

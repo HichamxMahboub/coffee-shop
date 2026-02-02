@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS customers (
   id SERIAL PRIMARY KEY,
-  nom VARCHAR(120) NOT NULL,
+  name VARCHAR(120) NOT NULL,
   email VARCHAR(120) UNIQUE,
-  points INTEGER NOT NULL DEFAULT 0,
+  loyalty_points INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -33,17 +33,17 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS ingredients (
   id SERIAL PRIMARY KEY,
-  nom VARCHAR(160) NOT NULL,
-  quantite NUMERIC(12, 3) NOT NULL,
-  unite VARCHAR(40) NOT NULL,
-  seuil_alerte NUMERIC(12, 3) NOT NULL DEFAULT 0
+  name VARCHAR(160) NOT NULL,
+  unit VARCHAR(10) NOT NULL CHECK (unit IN ('ml', 'g', 'unit')),
+  stock_quantity NUMERIC(12, 3) NOT NULL,
+  alert_threshold NUMERIC(12, 3) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS product_ingredients (
+  id SERIAL PRIMARY KEY,
   product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
   ingredient_id INTEGER REFERENCES ingredients(id) ON DELETE CASCADE,
-  quantite_par_unite NUMERIC(12, 3) NOT NULL,
-  PRIMARY KEY (product_id, ingredient_id)
+  quantity_needed NUMERIC(12, 3) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS orders (
   utilisateur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
   total NUMERIC(10, 2) NOT NULL,
-  type_paiement VARCHAR(40) NOT NULL DEFAULT 'cash',
+  payment_method VARCHAR(40) NOT NULL DEFAULT 'cash',
   created_at TIMESTAMP DEFAULT NOW()
 );
 

@@ -23,13 +23,17 @@ export async function getProducts(req, res, next) {
 
     if (q) {
       params.push(`%${q}%`);
-      sql += " WHERE p.name ILIKE $1";
+      sql += " WHERE p.nom ILIKE $1";
     }
 
-    sql += " ORDER BY p.name";
+    sql += " ORDER BY p.nom";
 
     const result = await query(sql, params);
-    return res.json(result.rows);
+    const products = result.rows.map((row) => ({
+      ...row,
+      price: Number(row.price),
+    }));
+    return res.json(products);
   } catch (error) {
     return next(error);
   }
@@ -49,7 +53,10 @@ export async function getProduct(req, res, next) {
       [req.params.id]
     );
 
-    return res.json(result.rows[0]);
+    const product = result.rows[0]
+      ? { ...result.rows[0], price: Number(result.rows[0].price) }
+      : null;
+    return res.json(product);
   } catch (error) {
     return next(error);
   }

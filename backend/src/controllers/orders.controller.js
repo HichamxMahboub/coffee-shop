@@ -23,7 +23,6 @@ export async function createOrder(req, res, next) {
 
     await client.query("BEGIN");
 
-    // Calcul du total
     let total = items.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
       0
@@ -53,7 +52,6 @@ export async function createOrder(req, res, next) {
       earnedPoints = Math.floor(total);
     }
 
-    // Calcul des ingrédients requis par produit
     const requiredByIngredient = new Map();
 
     for (const item of items) {
@@ -73,7 +71,6 @@ export async function createOrder(req, res, next) {
       }
     }
 
-    // Vérification du stock d'ingrédients
     for (const [ingredientId, required] of requiredByIngredient.entries()) {
       const inventoryResult = await client.query(
         `
@@ -102,7 +99,6 @@ export async function createOrder(req, res, next) {
       }
     }
 
-    // Enregistrement de la commande
     const orderResult = await client.query(
       `
       INSERT INTO orders (utilisateur_id, customer_id, total, payment_method)
@@ -124,7 +120,6 @@ export async function createOrder(req, res, next) {
       );
     }
 
-    // Déstockage des ingrédients
     for (const [ingredientId, required] of requiredByIngredient.entries()) {
       await client.query(
         "UPDATE ingredients SET stock_quantity = stock_quantity - $1 WHERE id = $2",
@@ -132,7 +127,6 @@ export async function createOrder(req, res, next) {
       );
     }
 
-    // Mise à jour des points fidélité
     if (customerRow) {
       const newPoints = Math.max(
         0,
@@ -168,12 +162,12 @@ export async function getOrders(req, res, next) {
   try {
     const result = await query(
       `
-                        SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
-                      o.payment_method AS payment_method,
-                    u.nom AS cashier
+      SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
+             o.payment_method AS payment_method,
+             u.nom AS cashier
       FROM orders o
-            LEFT JOIN users u ON u.id = o.utilisateur_id
-                        ORDER BY o.created_at DESC
+      LEFT JOIN users u ON u.id = o.utilisateur_id
+      ORDER BY o.created_at DESC
       `
     );
 
@@ -188,11 +182,11 @@ export async function getOrder(req, res, next) {
   try {
     const orderResult = await query(
       `
-                        SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
-                      o.payment_method AS payment_method,
-                    u.nom AS cashier
+      SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
+             o.payment_method AS payment_method,
+             u.nom AS cashier
       FROM orders o
-            LEFT JOIN users u ON u.id = o.utilisateur_id
+      LEFT JOIN users u ON u.id = o.utilisateur_id
       WHERE o.id = $1
       `,
       [req.params.id]

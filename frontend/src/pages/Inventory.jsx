@@ -3,10 +3,10 @@ import { PlusCircle, Trash2, Pencil, AlertTriangle } from "lucide-react";
 import { apiFetch } from "../api/client.js";
 
 const defaultForm = {
-  nom: "",
-  quantite: "",
-  unite: "grammes",
-  seuilAlerte: "0",
+  name: "",
+  stockQuantity: "",
+  unit: "g",
+  alertThreshold: "0",
 };
 
 export default function Inventory() {
@@ -37,10 +37,10 @@ export default function Inventory() {
     setError("");
 
     const payload = {
-      nom: form.nom,
-      quantite: Number(form.quantite),
-      unite: form.unite,
-      seuilAlerte: Number(form.seuilAlerte),
+      name: form.name,
+      stockQuantity: Number(form.stockQuantity),
+      unit: form.unit,
+      alertThreshold: Number(form.alertThreshold),
     };
 
     try {
@@ -66,10 +66,10 @@ export default function Inventory() {
   const startEdit = (ingredient) => {
     setEditingId(ingredient.id);
     setForm({
-      nom: ingredient.nom,
-      quantite: ingredient.quantite,
-      unite: ingredient.unite,
-      seuilAlerte: ingredient.seuil_alerte,
+      name: ingredient.name,
+      stockQuantity: ingredient.stock_quantity,
+      unit: ingredient.unit,
+      alertThreshold: ingredient.alert_threshold,
     });
   };
 
@@ -93,37 +93,40 @@ export default function Inventory() {
           </div>
           <input
             className="input w-full"
-            name="nom"
+            name="name"
             placeholder="Nom de l'ingrédient"
-            value={form.nom}
+            value={form.name}
             onChange={handleChange}
             required
           />
           <input
             className="input w-full"
-            name="quantite"
+            name="stockQuantity"
             type="number"
             step="0.001"
             placeholder="Quantité"
-            value={form.quantite}
+            value={form.stockQuantity}
             onChange={handleChange}
             required
           />
-          <input
+          <select
             className="input w-full"
-            name="unite"
-            placeholder="Unité (grammes, litres...)"
-            value={form.unite}
+            name="unit"
+            value={form.unit}
             onChange={handleChange}
             required
-          />
+          >
+            <option value="g">g</option>
+            <option value="ml">ml</option>
+            <option value="unit">unit</option>
+          </select>
           <input
             className="input w-full"
-            name="seuilAlerte"
+            name="alertThreshold"
             type="number"
             step="0.001"
             placeholder="Seuil d'alerte"
-            value={form.seuilAlerte}
+            value={form.alertThreshold}
             onChange={handleChange}
           />
 
@@ -144,19 +147,29 @@ export default function Inventory() {
 
           <div className="mt-4 space-y-3 text-sm">
             {ingredients.map((ingredient) => {
-              const isLow = Number(ingredient.quantite) <= Number(ingredient.seuil_alerte);
+              const isLow =
+                Number(ingredient.stock_quantity) <= Number(ingredient.alert_threshold);
               return (
                 <div
                   key={ingredient.id}
                   className="flex items-center justify-between rounded-xl border border-slate-800 px-4 py-3"
                 >
                   <div>
-                    <p className="font-semibold">{ingredient.nom}</p>
+                    <p className="font-semibold">{ingredient.name}</p>
                     <p className="text-xs text-slate-400">
-                      {ingredient.quantite} {ingredient.unite}
+                      {ingredient.stock_quantity} {ingredient.unit}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isLow ? (
+                      <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs font-semibold text-red-300">
+                        Stock bas
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
+                        OK
+                      </span>
+                    )}
                     {isLow && <AlertTriangle className="h-4 w-4 text-amber-300" />}
                     <button type="button" onClick={() => startEdit(ingredient)}>
                       <Pencil className="h-4 w-4" />

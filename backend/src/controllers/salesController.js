@@ -7,7 +7,7 @@ export async function getSalesHistory(req, res, next) {
     const params = [];
     let sql = `
                         SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
-                    o.type_paiement AS payment_method,
+                      o.payment_method AS payment_method,
                     u.nom AS cashier
       FROM orders o
             LEFT JOIN users u ON u.id = o.utilisateur_id
@@ -21,7 +21,11 @@ export async function getSalesHistory(req, res, next) {
     sql += " ORDER BY o.created_at DESC";
 
     const result = await query(sql, params);
-    return res.json(result.rows);
+    const sales = result.rows.map((row) => ({
+      ...row,
+      total_amount: Number(row.total_amount),
+    }));
+    return res.json(sales);
   } catch (error) {
     return next(error);
   }
@@ -33,7 +37,7 @@ export async function exportSalesCsv(req, res, next) {
     const result = await query(
       `
                         SELECT o.id, o.created_at AS created_at, o.total AS total_amount,
-                    o.type_paiement AS payment_method,
+                      o.payment_method AS payment_method,
                     u.nom AS cashier
       FROM orders o
             LEFT JOIN users u ON u.id = o.utilisateur_id
@@ -46,7 +50,7 @@ export async function exportSalesCsv(req, res, next) {
       [
         row.id,
         row.created_at.toISOString(),
-        row.total_amount,
+        Number(row.total_amount),
         row.payment_method,
         row.cashier || "",
       ].join(",")

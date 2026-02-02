@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Search, ShoppingCart, Trash2, ReceiptText, UserCircle } from "lucide-react";
 import { apiFetch } from "../api/client.js";
 import { useCart } from "../context/CartContext.jsx";
+import toast from "react-hot-toast";
 
 export default function POS() {
   const [products, setProducts] = useState([]);
@@ -55,8 +56,14 @@ export default function POS() {
       });
       clearCart();
       setOrderStatus("Commande enregistrée !");
+      toast.success("Vente confirmée");
     } catch (err) {
       setOrderStatus(err.message);
+      if (err.message?.toLowerCase().includes("stock")) {
+        toast.error(err.message);
+      } else {
+        toast.error("Échec de la vente");
+      }
     } finally {
       setLoading(false);
     }
@@ -65,7 +72,7 @@ export default function POS() {
   const selectedCustomer = customers.find(
     (customer) => String(customer.id) === String(selectedCustomerId)
   );
-  const discount = selectedCustomer?.points > 50 ? 5 : 0;
+  const discount = selectedCustomer?.loyalty_points > 50 ? 5 : 0;
   const totalAfterDiscount = Math.max(0, total - discount);
 
   const handlePrintReceipt = () => {
@@ -105,11 +112,11 @@ export default function POS() {
             <option value="">Aucun client</option>
             {customers.map((customer) => (
               <option key={customer.id} value={customer.id}>
-                {customer.nom} • {customer.points} pts
+                {customer.name} • {customer.loyalty_points} pts
               </option>
             ))}
           </select>
-          {selectedCustomer && selectedCustomer.points > 50 && (
+          {selectedCustomer && selectedCustomer.loyalty_points > 50 && (
             <p className="mt-2 text-xs text-coffee-200">
               Remise automatique de 5€ appliquée
             </p>
