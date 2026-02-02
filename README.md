@@ -1,0 +1,77 @@
+# Coffee Shop Management System
+
+Application full-stack de gestion de café (dashboard, POS, inventaire, ventes).
+
+## Stack
+- Frontend : React + Tailwind + Vite
+- Backend : Node.js + Express
+- Base de données : PostgreSQL
+
+## Installation
+
+### 1) Base de données
+Créer la base et appliquer le schéma :
+
+```bash
+createdb coffee_shop
+psql coffee_shop < backend/schema.sql
+```
+
+Créer un utilisateur admin (exemple, à adapter) :
+
+```bash
+psql coffee_shop
+```
+
+```sql
+INSERT INTO users (full_name, email, role, password_hash)
+VALUES (
+  'Admin Café',
+  'admin@cafe.com',
+  'admin',
+  '$2a$10$5xSxwQyV4lGzqR4J9aT3LuzR2nQ7pS8Z1DkQ2Q0d3kO2Xkqv4n9cq' -- mot de passe: admin123
+);
+```
+
+### 2) Backend
+
+```bash
+cd backend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+### 3) Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## Variables d’environnement
+
+Backend (`backend/.env`):
+
+- `PORT=5000`
+- `DATABASE_URL=postgres://postgres:postgres@localhost:5432/coffee_shop`
+- `JWT_SECRET=change-moi`
+
+Frontend (`frontend/.env` optionnel):
+
+- `VITE_API_URL=http://localhost:5000/api`
+
+## Fonctionnalités
+- Dashboard : ventes du jour, commandes, alertes stock bas
+- POS : recherche, panier, TVA, encaissement
+- Inventaire : CRUD produits
+- Ventes : historique + export CSV
+- Auth : login sécurisé JWT
+
+## Structure
+```
+/coffee shop
+  /backend
+  /frontend
+```

@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Thème Café Premium */
+body {
+  @apply bg-slate-950 text-slate-50;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.card {
+  @apply rounded-2xl bg-slate-900/80 border border-slate-800 shadow-card;
+}
+
+.input {
+  @apply rounded-xl border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-400;
+}
+
+.button-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-coffee-500 px-4 py-2 text-sm font-semibold text-white hover:bg-coffee-600 transition;
+}
+
+.button-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-800 transition;
+}
