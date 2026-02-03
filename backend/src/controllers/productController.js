@@ -14,8 +14,8 @@ export async function getProducts(req, res, next) {
     const { q, lang } = req.query;
     const params = [];
     const safeLang = ["en", "es", "ar"].includes(lang) ? lang : null;
-    const productName = safeLang ? `COALESCE(p.name_${safeLang}, p.nom)` : "p.nom";
-    const categoryName = safeLang ? `COALESCE(c.name_${safeLang}, c.nom)` : "c.nom";
+    const productName = safeLang ? "COALESCE(p.name, p.nom)" : "p.nom";
+    const categoryName = safeLang ? "COALESCE(c.name, c.nom)" : "c.nom";
 
     let sql = `
       SELECT p.id, ${productName} AS name, p.prix AS price, p.image_url,

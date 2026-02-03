@@ -106,6 +106,32 @@ psql "${DATABASE_URL}" < backend/database/migration.sql
 - Backend: `npm run dev`
 - Frontend: `VITE_API_URL` pointe vers le backend déployé.
 
+## Déploiement (Vercel + Railway)
+
+### Railway (Backend)
+1) Root du service: `backend/`
+2) Commandes:
+- Build: `npm install`
+- Start: `npm start`
+3) Variables:
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `JWT_REFRESH_SECRET`
+- `PORT=5000`
+
+### Migrations (Railway DB)
+```bash
+psql "${DATABASE_URL}" < backend/database/setup.sql
+psql "${DATABASE_URL}" < backend/database/migration.sql
+```
+
+### Vercel (Frontend)
+1) Root du projet: `frontend/`
+2) Build: `npm run build`
+3) Output: `dist`
+4) Variable:
+- `VITE_API_URL=https://<votre-backend>/api`
+
 ## Fonctionnalités
 - Dashboard : ventes du jour, commandes, alertes stock bas
 - POS : recherche, panier, TVA, encaissement
